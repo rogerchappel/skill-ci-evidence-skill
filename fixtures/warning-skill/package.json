@@ -1,0 +1,10 @@
+{
+  "name": "warning-skill",
+  "version": "0.1.0",
+  "scripts": {
+    "test": "echo test"
+  },
+  "files": [
+    "dist"
+  ]
+}

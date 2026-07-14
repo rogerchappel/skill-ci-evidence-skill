@@ -1,0 +1,4 @@
+npm run check PASS
+npm test PASS
+npm run smoke PASS
+npm pack --dry-run includes SKILL.md docs/PRD.md fixtures/sample.json
