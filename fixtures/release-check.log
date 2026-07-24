@@ -1,4 +1,4 @@
-npm run check PASS
-npm test PASS
-npm run smoke PASS
-npm pack --dry-run includes SKILL.md docs/PRD.md fixtures/sample.json
+npm run check :: exit 0
+npm test :: exit 0
+npm run smoke :: exit 0
+npm pack --dry-run :: exit 0
