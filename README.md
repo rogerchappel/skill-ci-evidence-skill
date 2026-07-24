@@ -7,9 +7,14 @@ Collects local release-candidate evidence for agent-skill packages.
 ```bash
 npm install
 npm run build
-skill-ci-evidence collect --repo fixtures/passing-skill --log fixtures/release-check.log --out .tmp/evidence.md --json .tmp/evidence.json
-skill-ci-evidence check .tmp/evidence.json
+npm exec -- skill-ci-evidence collect --repo fixtures/passing-skill --log fixtures/release-check.log --out .tmp/evidence.md --json .tmp/evidence.json
+npm exec -- skill-ci-evidence check .tmp/evidence.json
 ```
+
+`check` fails unless the report contains the required paths, the `check`,
+`test`, and `smoke` package scripts, and observations of all four release
+commands: `npm run check`, `npm test`, `npm run smoke`, and
+`npm pack --dry-run`.
 
 ## Library
 
