@@ -14,12 +14,32 @@ test('requires every release command to be observed', () => {
   assert.deepEqual(
     checkEvidence(report).filter((failure) => failure.includes('not observed')),
     [
-      'required release command not observed: npm run check',
-      'required release command not observed: npm test',
-      'required release command not observed: npm run smoke',
-      'required release command not observed: npm pack --dry-run'
+      'required release command did not pass: npm run check (not observed)',
+      'required release command did not pass: npm test (not observed)',
+      'required release command did not pass: npm run smoke (not observed)',
+      'required release command did not pass: npm pack --dry-run (not observed)'
     ]
   );
+});
+test('rejects failed, misleading, and duplicate command outcomes', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'skill-ci-evidence-logs-'));
+  try {
+    const cases = [
+      ['failed', 'npm run check :: exit 1\n', 'failed'],
+      ['mention', 'next run: npm run check :: exit 0\n', 'not observed'],
+      ['incomplete', 'npm run check PASS\n', 'not observed'],
+      ['duplicate', 'npm run check :: exit 0\nnpm run check :: exit 0\n', 'ambiguous']
+    ] as const;
+    for (const [name, contents, expected] of cases) {
+      const log = path.join(directory, `${name}.log`);
+      fs.writeFileSync(log, contents);
+      const report = collectEvidence({repo:'fixtures/passing-skill', log});
+      assert.equal(report.checks['npm run check'], expected);
+      assert.ok(checkEvidence(report).includes(`required release command did not pass: npm run check (${expected})`));
+    }
+  } finally {
+    fs.rmSync(directory, {recursive:true, force:true});
+  }
 });
 test('check command exits nonzero for incomplete evidence and zero for passing evidence', () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'skill-ci-evidence-test-'));

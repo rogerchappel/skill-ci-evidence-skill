@@ -3,8 +3,21 @@ export interface EvidenceInput { repo: string; log?: string; }
 export interface EvidenceReport { repo: string; packageName: string; version: string; scripts: string[]; files: string[]; checks: Record<string,string>; warnings: string[]; missing: string[]; }
 const REQUIRED_SCRIPTS = ['check','test','smoke'];
 const REQUIRED_COMMANDS = ['npm run check','npm test','npm run smoke','npm pack --dry-run'];
+type CommandOutcome = 'passed' | 'failed' | 'ambiguous' | 'not observed';
 function readJson(file: string): any { return JSON.parse(fs.readFileSync(file,'utf8')); }
 function exists(file: string): boolean { return fs.existsSync(file); }
+function commandOutcome(logText: string, command: string): CommandOutcome {
+  const prefix = `${command} :: exit `;
+  const exitCodes = logText.split(/\r?\n/)
+    .filter((line) => line.startsWith(prefix))
+    .map((line) => line.slice(prefix.length))
+    .filter((value) => /^\d+$/.test(value))
+    .map(Number);
+  if (exitCodes.length === 0) return 'not observed';
+  if (exitCodes.some((code) => code !== 0)) return 'failed';
+  if (exitCodes.length > 1) return 'ambiguous';
+  return 'passed';
+}
 export function collectEvidence(input: EvidenceInput): EvidenceReport {
   const pkgPath = path.join(input.repo,'package.json');
   const pkg = readJson(pkgPath);
@@ -12,7 +25,7 @@ export function collectEvidence(input: EvidenceInput): EvidenceReport {
   const files = Array.isArray(pkg.files) ? pkg.files : [];
   const logText = input.log && exists(input.log) ? fs.readFileSync(input.log,'utf8') : '';
   const checks: Record<string,string> = {};
-  for (const name of REQUIRED_COMMANDS) checks[name] = logText.toLowerCase().includes(name.toLowerCase()) ? 'observed' : 'not observed';
+  for (const name of REQUIRED_COMMANDS) checks[name] = commandOutcome(logText, name);
   const required = ['SKILL.md','docs/PRD.md','docs/TASKS.md','fixtures'];
   const missing = required.filter((entry) => !exists(path.join(input.repo, entry)) && !files.includes(entry));
   const warnings: string[] = [];
@@ -27,7 +40,8 @@ export function checkEvidence(report: EvidenceReport): string[] {
     if (!report.scripts.includes(script)) failures.push(`required npm script missing: ${script}`);
   }
   for (const command of REQUIRED_COMMANDS) {
-    if (report.checks[command] !== 'observed') failures.push(`required release command not observed: ${command}`);
+    const outcome = report.checks[command];
+    if (outcome !== 'passed') failures.push(`required release command did not pass: ${command} (${outcome || 'missing outcome'})`);
   }
   return failures;
 }

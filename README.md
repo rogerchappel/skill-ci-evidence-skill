@@ -12,9 +12,19 @@ npm exec -- skill-ci-evidence check .tmp/evidence.json
 ```
 
 `check` fails unless the report contains the required paths, the `check`,
-`test`, and `smoke` package scripts, and observations of all four release
-commands: `npm run check`, `npm test`, `npm run smoke`, and
+`test`, and `smoke` package scripts, and successful outcomes for all four
+release commands: `npm run check`, `npm test`, `npm run smoke`, and
 `npm pack --dry-run`.
+
+Release logs use one exact record per command:
+
+```text
+npm run check :: exit 0
+```
+
+The command must begin the line and the decimal exit code must end it. Exit
+zero passes. Nonzero, missing, malformed, mentioned in other text, or duplicate
+outcomes fail closed with the outcome in the diagnostic.
 
 ## Library
 
