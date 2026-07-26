@@ -1,7 +1,45 @@
 import test from 'node:test'; import assert from 'node:assert/strict'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path'; import { spawnSync } from 'node:child_process';
 import { collectEvidence, checkEvidence } from '../index.js';
-test('collects passing repo evidence', () => { const report = collectEvidence({repo:'fixtures/passing-skill', log:'fixtures/release-check.log'}); assert.equal(report.packageName, 'passing-skill'); assert.equal(report.missing.length, 0); assert.equal(checkEvidence(report).length, 0); });
+test('collects passing repo evidence', () => { const report = collectEvidence({repo:'fixtures/passing-skill', log:'fixtures/release-check.log'}); assert.equal(report.packageName, 'passing-skill'); assert.equal(report.missing.length, 0); assert.equal(report.warnings.length, 0); assert.equal(checkEvidence(report).length, 0); });
 test('flags incomplete package evidence', () => { const report = collectEvidence({repo:'fixtures/failing-skill'}); assert.ok(report.missing.includes('SKILL.md')); assert.ok(checkEvidence(report).length > 0); });
+test('does not treat package file declarations as evidence that required paths exist', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'skill-ci-evidence-paths-'));
+  try {
+    fs.writeFileSync(path.join(directory, 'package.json'), JSON.stringify({
+      name: 'missing-required-paths',
+      version: '0.1.0',
+      scripts: {check: 'echo check', test: 'echo test', smoke: 'echo smoke'},
+      files: ['SKILL.md', 'docs/PRD.md', 'docs/TASKS.md', 'fixtures']
+    }));
+    const report = collectEvidence({repo:directory, log:'fixtures/release-check.log'});
+    assert.deepEqual(report.missing, ['SKILL.md', 'docs/PRD.md', 'docs/TASKS.md', 'fixtures']);
+    assert.deepEqual(checkEvidence(report).filter((failure) => failure.includes('required path missing')), [
+      'required path missing: SKILL.md',
+      'required path missing: docs/PRD.md',
+      'required path missing: docs/TASKS.md',
+      'required path missing: fixtures'
+    ]);
+  } finally {
+    fs.rmSync(directory, {recursive:true, force:true});
+  }
+});
+test('reports package inclusion intent separately from path existence', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'skill-ci-evidence-package-'));
+  try {
+    fs.cpSync('fixtures/passing-skill', directory, {recursive:true});
+    const packageJson = path.join(directory, 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(packageJson, 'utf8'));
+    fs.writeFileSync(packageJson, JSON.stringify({...pkg, files: ['SKILL.md', 'fixtures']}));
+    const unpackaged = collectEvidence({repo:directory, log:'fixtures/release-check.log'});
+    assert.deepEqual(unpackaged.missing, []);
+    assert.deepEqual(unpackaged.warnings, [
+      'package files should include docs/PRD.md',
+      'package files should include docs/TASKS.md'
+    ]);
+  } finally {
+    fs.rmSync(directory, {recursive:true, force:true});
+  }
+});
 test('requires check and smoke scripts', () => {
   const report = collectEvidence({repo:'fixtures/warning-skill', log:'fixtures/release-check.log'});
   assert.deepEqual(

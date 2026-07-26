@@ -3,9 +3,13 @@ export interface EvidenceInput { repo: string; log?: string; }
 export interface EvidenceReport { repo: string; packageName: string; version: string; scripts: string[]; files: string[]; checks: Record<string,string>; warnings: string[]; missing: string[]; }
 const REQUIRED_SCRIPTS = ['check','test','smoke'];
 const REQUIRED_COMMANDS = ['npm run check','npm test','npm run smoke','npm pack --dry-run'];
+const REQUIRED_PATHS = ['SKILL.md','docs/PRD.md','docs/TASKS.md','fixtures'];
 type CommandOutcome = 'passed' | 'failed' | 'ambiguous' | 'not observed';
 function readJson(file: string): any { return JSON.parse(fs.readFileSync(file,'utf8')); }
 function exists(file: string): boolean { return fs.existsSync(file); }
+function isIncludedInPackage(files: string[], requiredPath: string): boolean {
+  return files.some((entry) => requiredPath === entry || requiredPath.startsWith(`${entry.replace(/\/$/, '')}/`));
+}
 function commandOutcome(logText: string, command: string): CommandOutcome {
   const prefix = `${command} :: exit `;
   const exitCodes = logText.split(/\r?\n/)
@@ -26,11 +30,10 @@ export function collectEvidence(input: EvidenceInput): EvidenceReport {
   const logText = input.log && exists(input.log) ? fs.readFileSync(input.log,'utf8') : '';
   const checks: Record<string,string> = {};
   for (const name of REQUIRED_COMMANDS) checks[name] = commandOutcome(logText, name);
-  const required = ['SKILL.md','docs/PRD.md','docs/TASKS.md','fixtures'];
-  const missing = required.filter((entry) => !exists(path.join(input.repo, entry)) && !files.includes(entry));
+  const missing = REQUIRED_PATHS.filter((entry) => !exists(path.join(input.repo, entry)));
   const warnings: string[] = [];
   for (const script of REQUIRED_SCRIPTS) if (!scripts.includes(script)) warnings.push('missing npm script: '+script);
-  if (!files.includes('SKILL.md')) warnings.push('package files should include SKILL.md');
+  for (const entry of REQUIRED_PATHS) if (!isIncludedInPackage(files, entry)) warnings.push(`package files should include ${entry}`);
   return { repo: input.repo, packageName: pkg.name || 'unknown', version: pkg.version || '0.0.0', scripts, files, checks, warnings, missing };
 }
 export function renderMarkdown(report: EvidenceReport): string { return ['# Skill CI Evidence','',`Package: ${report.packageName}@${report.version}`,`Repo: ${report.repo}`,'','## Checks',...Object.entries(report.checks).map(([k,v])=>`- ${k}: ${v}`),'','## Warnings',...(report.warnings.length?report.warnings.map(w=>`- ${w}`):['- none']),'','## Missing',...(report.missing.length?report.missing.map(m=>`- ${m}`):['- none']),''].join('\n'); }

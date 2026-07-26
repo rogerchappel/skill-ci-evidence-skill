@@ -16,6 +16,11 @@ npm exec -- skill-ci-evidence check .tmp/evidence.json
 release commands: `npm run check`, `npm test`, `npm run smoke`, and
 `npm pack --dry-run`.
 
+Required paths are checked on disk. Listing a missing path in `package.json`
+`files` does not satisfy that check; package inclusion is reported separately
+as a warning, with parent directory entries such as `docs` covering their
+contents.
+
 Release logs use one exact record per command:
 
 ```text
