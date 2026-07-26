@@ -6,6 +6,10 @@ npm exec -- skill-ci-evidence check .tmp/evidence.json
 ```
 
 Reports are designed for release-candidate PR bodies and agent handoffs.
+The collector verifies required source paths on disk independently from the
+package's `files` allowlist. A declared but nonexistent file or directory is
+reported under `missing`; an existing path excluded from the package is
+reported under `warnings`.
 
 The log is machine-readable evidence, with exactly one outcome line for each
 required command:
