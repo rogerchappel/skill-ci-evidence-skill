@@ -16,6 +16,32 @@ npx --no-install skill-ci-evidence collect \
   --json evidence.json
 npx --no-install skill-ci-evidence check evidence.json
 
+mkdir declared-only
+cat > declared-only/package.json <<'EOF'
+{
+  "name": "declared-only",
+  "version": "0.1.0",
+  "scripts": {
+    "check": "echo check",
+    "test": "echo test",
+    "smoke": "echo smoke"
+  },
+  "files": ["SKILL.md", "docs/PRD.md", "docs/TASKS.md", "fixtures"]
+}
+EOF
+npx --no-install skill-ci-evidence collect \
+  --repo declared-only \
+  --log node_modules/skill-ci-evidence-skill/fixtures/release-check.log \
+  --json declared-only.json
+if npx --no-install skill-ci-evidence check declared-only.json >declared-only.out 2>declared-only.err; then
+  echo "installed CLI accepted declared but nonexistent required paths" >&2
+  exit 1
+fi
+grep -F 'required path missing: SKILL.md' declared-only.err
+grep -F 'required path missing: docs/PRD.md' declared-only.err
+grep -F 'required path missing: docs/TASKS.md' declared-only.err
+grep -F 'required path missing: fixtures' declared-only.err
+
 for case_name in failed mention incomplete; do
   case "$case_name" in
     failed) printf '%s\n' 'npm run check :: exit 2' > "$case_name.log" ;;
