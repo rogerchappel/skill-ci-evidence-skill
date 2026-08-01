@@ -5,6 +5,11 @@ npm exec -- skill-ci-evidence collect --repo fixtures/passing-skill --log fixtur
 npm exec -- skill-ci-evidence check .tmp/evidence.json
 ```
 
+The `collect` command has no positional arguments. Its supported options are
+`--repo <path>` (default: `.`), `--log <path>`, `--out <path>`, and
+`--json <path>`. The `check` command requires exactly one evidence JSON path.
+Use `npm exec -- skill-ci-evidence --help` for the complete syntax.
+
 Reports are designed for release-candidate PR bodies and agent handoffs.
 The collector verifies required source paths on disk independently from the
 package's `files` allowlist. A declared but nonexistent file or directory is

@@ -11,6 +11,12 @@ npm exec -- skill-ci-evidence collect --repo fixtures/passing-skill --log fixtur
 npm exec -- skill-ci-evidence check .tmp/evidence.json
 ```
 
+`collect` accepts `--repo <path>` (default: the current directory),
+`--log <path>`, `--out <path>`, and `--json <path>`. Options require a value;
+unknown options, duplicate options, and positional arguments are rejected.
+`check` accepts exactly one positional evidence JSON path. Run
+`skill-ci-evidence --help` to print the accepted syntax.
+
 `check` fails unless the report contains the required paths, the `check`,
 `test`, and `smoke` package scripts, and successful outcomes for all four
 release commands: `npm run check`, `npm test`, `npm run smoke`, and
