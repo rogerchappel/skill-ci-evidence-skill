@@ -37,9 +37,29 @@ The command must begin the line and the decimal exit code must end it. Exit
 zero passes. Nonzero, missing, malformed, mentioned in other text, or duplicate
 outcomes fail closed with the outcome in the diagnostic.
 
+### Evidence JSON contract
+
+`check` accepts one JSON object with all of the fields emitted by `collect`:
+
+| Field | Type |
+| --- | --- |
+| `repo`, `packageName`, `version` | string |
+| `scripts`, `files`, `warnings`, `missing` | array of strings |
+| `checks` | object with string values |
+
+`checks` must contain keys for `npm run check`, `npm test`, `npm run smoke`,
+and `npm pack --dry-run`. Additional check keys are preserved. Missing fields,
+wrong field types, non-string collection entries, and missing required check
+keys fail closed before evidence is evaluated. Diagnostics begin with
+`invalid evidence report:` and identify the first invalid field in schema
+order. Invalid JSON is reported by the JSON parser and also exits nonzero.
+
 ## Library
 
-Import from `skill-ci-evidence-skill` to build local-first automation around the same deterministic planner.
+Import from `skill-ci-evidence-skill` to build local-first automation around
+the same deterministic planner. `validateEvidenceReport(value)` validates an
+unknown value and returns a typed `EvidenceReport`; `checkEvidence(value)`
+performs the same validation before evaluating evidence requirements.
 
 ## Safety Notes
 
