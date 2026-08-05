@@ -1,5 +1,5 @@
 import test from 'node:test'; import assert from 'node:assert/strict'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path'; import { spawnSync } from 'node:child_process';
-import { collectEvidence, checkEvidence } from '../index.js';
+import { collectEvidence, checkEvidence, validateEvidenceReport } from '../index.js';
 test('collects passing repo evidence', () => { const report = collectEvidence({repo:'fixtures/passing-skill', log:'fixtures/release-check.log'}); assert.equal(report.packageName, 'passing-skill'); assert.equal(report.missing.length, 0); assert.equal(report.warnings.length, 0); assert.equal(checkEvidence(report).length, 0); });
 test('flags incomplete package evidence', () => { const report = collectEvidence({repo:'fixtures/failing-skill'}); assert.ok(report.missing.includes('SKILL.md')); assert.ok(checkEvidence(report).length > 0); });
 test('does not treat package file declarations as evidence that required paths exist', () => {
@@ -94,6 +94,58 @@ test('check command exits nonzero for incomplete evidence and zero for passing e
     assert.match(incomplete.stderr.toString(), /required npm script missing: check/);
     assert.equal(passing.status, 0);
     assert.match(passing.stdout.toString(), /evidence check passed/);
+  } finally {
+    fs.rmSync(directory, {recursive:true, force:true});
+  }
+});
+test('validates a collected evidence report round trip', () => {
+  const collected = collectEvidence({repo:'fixtures/passing-skill', log:'fixtures/release-check.log'});
+  assert.deepEqual(validateEvidenceReport(JSON.parse(JSON.stringify(collected))), collected);
+});
+test('rejects omitted evidence metadata, arrays, and maps deterministically', () => {
+  const valid = collectEvidence({repo:'fixtures/passing-skill', log:'fixtures/release-check.log'});
+  for (const field of ['repo', 'packageName', 'version', 'scripts', 'files', 'checks', 'warnings', 'missing'] as const) {
+    const candidate: Record<string, unknown> = {...valid};
+    delete candidate[field];
+    assert.throws(
+      () => validateEvidenceReport(candidate),
+      new Error(`invalid evidence report: ${field} is required`)
+    );
+  }
+});
+test('rejects wrong evidence field and collection value types', () => {
+  const valid = collectEvidence({repo:'fixtures/passing-skill', log:'fixtures/release-check.log'});
+  const cases: Array<[Record<string, unknown>, string]> = [
+    [{...valid, repo: 42}, 'repo must be a string'],
+    [{...valid, scripts: 'check'}, 'scripts must be an array of strings'],
+    [{...valid, files: [false]}, 'files must be an array of strings'],
+    [{...valid, checks: []}, 'checks must be an object with string values'],
+    [{...valid, checks: {'npm run check': 0}}, 'checks must be an object with string values'],
+    [{...valid, warnings: [null]}, 'warnings must be an array of strings'],
+    [{...valid, missing: {}}, 'missing must be an array of strings']
+  ];
+  for (const [candidate, diagnostic] of cases) {
+    assert.throws(() => validateEvidenceReport(candidate), new Error(`invalid evidence report: ${diagnostic}`));
+  }
+});
+test('rejects evidence reports missing required release check keys', () => {
+  const valid = collectEvidence({repo:'fixtures/passing-skill', log:'fixtures/release-check.log'});
+  const checks = {...valid.checks};
+  delete checks['npm test'];
+  assert.throws(
+    () => validateEvidenceReport({...valid, checks}),
+    new Error('invalid evidence report: checks is missing required key: npm test')
+  );
+});
+test('check command reports malformed evidence without incidental type errors', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'skill-ci-evidence-schema-'));
+  try {
+    const file = path.join(directory, 'malformed.json');
+    fs.writeFileSync(file, JSON.stringify({missing: []}));
+    const result = spawnSync(process.execPath, ['dist/cli.js', 'check', file]);
+    assert.equal(result.status, 1);
+    assert.equal(result.stderr.toString(), 'invalid evidence report: repo is required\n');
+    assert.doesNotMatch(result.stderr.toString(), /TypeError/);
   } finally {
     fs.rmSync(directory, {recursive:true, force:true});
   }
