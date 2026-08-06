@@ -5,6 +5,8 @@ const REQUIRED_SCRIPTS = ['check','test','smoke'];
 const REQUIRED_COMMANDS = ['npm run check','npm test','npm run smoke','npm pack --dry-run'];
 const REQUIRED_PATHS = ['SKILL.md','docs/PRD.md','docs/TASKS.md','fixtures'];
 type CommandOutcome = 'passed' | 'failed' | 'ambiguous' | 'not observed';
+const REPORT_STRING_FIELDS = ['repo','packageName','version'] as const;
+const REPORT_ARRAY_FIELDS = ['scripts','files','warnings','missing'] as const;
 function readJson(file: string): any { return JSON.parse(fs.readFileSync(file,'utf8')); }
 function exists(file: string): boolean { return fs.existsSync(file); }
 function isIncludedInPackage(files: string[], requiredPath: string): boolean {
@@ -37,7 +39,36 @@ export function collectEvidence(input: EvidenceInput): EvidenceReport {
   return { repo: input.repo, packageName: pkg.name || 'unknown', version: pkg.version || '0.0.0', scripts, files, checks, warnings, missing };
 }
 export function renderMarkdown(report: EvidenceReport): string { return ['# Skill CI Evidence','',`Package: ${report.packageName}@${report.version}`,`Repo: ${report.repo}`,'','## Checks',...Object.entries(report.checks).map(([k,v])=>`- ${k}: ${v}`),'','## Warnings',...(report.warnings.length?report.warnings.map(w=>`- ${w}`):['- none']),'','## Missing',...(report.missing.length?report.missing.map(m=>`- ${m}`):['- none']),''].join('\n'); }
-export function checkEvidence(report: EvidenceReport): string[] {
+function invalidReport(message: string): never {
+  throw new Error(`invalid evidence report: ${message}`);
+}
+export function validateEvidenceReport(value: unknown): EvidenceReport {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) invalidReport('expected a JSON object');
+  const report = value as Record<string, unknown>;
+  for (const field of [...REPORT_STRING_FIELDS, ...REPORT_ARRAY_FIELDS, 'checks'] as const) {
+    if (!Object.prototype.hasOwnProperty.call(report, field)) invalidReport(`${field} is required`);
+  }
+  for (const field of REPORT_STRING_FIELDS) {
+    if (typeof report[field] !== 'string') invalidReport(`${field} must be a string`);
+  }
+  for (const field of REPORT_ARRAY_FIELDS) {
+    if (!Array.isArray(report[field]) || !report[field].every((entry) => typeof entry === 'string')) {
+      invalidReport(`${field} must be an array of strings`);
+    }
+  }
+  if (typeof report.checks !== 'object' || report.checks === null || Array.isArray(report.checks) ||
+      !Object.values(report.checks).every((outcome) => typeof outcome === 'string')) {
+    invalidReport('checks must be an object with string values');
+  }
+  for (const command of REQUIRED_COMMANDS) {
+    if (!Object.prototype.hasOwnProperty.call(report.checks, command)) {
+      invalidReport(`checks is missing required key: ${command}`);
+    }
+  }
+  return report as unknown as EvidenceReport;
+}
+export function checkEvidence(value: unknown): string[] {
+  const report = validateEvidenceReport(value);
   const failures = report.missing.map((entry) => `required path missing: ${entry}`);
   for (const script of REQUIRED_SCRIPTS) {
     if (!report.scripts.includes(script)) failures.push(`required npm script missing: ${script}`);
