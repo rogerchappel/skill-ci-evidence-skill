@@ -56,10 +56,21 @@ order. Invalid JSON is reported by the JSON parser and also exits nonzero.
 
 ## Library
 
-Import from `skill-ci-evidence-skill` to build local-first automation around
-the same deterministic planner. `validateEvidenceReport(value)` validates an
-unknown value and returns a typed `EvidenceReport`; `checkEvidence(value)`
-performs the same validation before evaluating evidence requirements.
+The package exposes both the `skill-ci-evidence` CLI and a typed ESM library
+entry point. Import from the package root to build local-first automation
+around the same deterministic planner:
+
+```js
+import { checkEvidence, validateEvidenceReport } from 'skill-ci-evidence-skill';
+
+const report = validateEvidenceReport(JSON.parse(evidenceJson));
+const failures = checkEvidence(report);
+```
+
+`validateEvidenceReport(value)` validates an unknown value and returns a typed
+`EvidenceReport`; `checkEvidence(value)` performs the same validation before
+evaluating evidence requirements. The library also exports `collectEvidence`
+and `renderMarkdown` for programmatic collection and rendering.
 
 ## Safety Notes
 

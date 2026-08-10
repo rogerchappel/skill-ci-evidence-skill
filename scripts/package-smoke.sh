@@ -10,6 +10,32 @@ mkdir "$consumer_dir"
 cd "$consumer_dir"
 npm init --yes >/dev/null
 npm install --ignore-scripts "$package_dir/$package_file" >/dev/null
+node --input-type=module <<'EOF'
+import { checkEvidence, validateEvidenceReport } from 'skill-ci-evidence-skill';
+
+const report = {
+  repo: '/tmp/example',
+  packageName: 'example-skill',
+  version: '1.0.0',
+  scripts: ['check', 'test', 'smoke'],
+  files: ['SKILL.md', 'docs/PRD.md', 'docs/TASKS.md', 'fixtures'],
+  checks: {
+    'npm run check': 'passed',
+    'npm test': 'passed',
+    'npm run smoke': 'passed',
+    'npm pack --dry-run': 'passed'
+  },
+  warnings: [],
+  missing: []
+};
+
+if (validateEvidenceReport(report) !== report) {
+  throw new Error('installed validateEvidenceReport did not return its validated report');
+}
+if (checkEvidence(report).length !== 0) {
+  throw new Error('installed checkEvidence rejected valid evidence');
+}
+EOF
 npx --no-install skill-ci-evidence collect \
   --repo node_modules/skill-ci-evidence-skill/fixtures/passing-skill \
   --log node_modules/skill-ci-evidence-skill/fixtures/release-check.log \
