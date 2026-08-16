@@ -59,13 +59,16 @@ test('requires every release command to be observed', () => {
     ]
   );
 });
-test('rejects failed, misleading, and duplicate command outcomes', () => {
+test('rejects failed, misleading, malformed, and duplicate command outcomes', () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'skill-ci-evidence-logs-'));
   try {
     const cases = [
       ['failed', 'npm run check :: exit 1\n', 'failed'],
       ['mention', 'next run: npm run check :: exit 0\n', 'not observed'],
       ['incomplete', 'npm run check PASS\n', 'not observed'],
+      ['malformed', 'npm run check :: exit nope\n', 'malformed'],
+      ['valid-malformed', 'npm run check :: exit 0\nnpm run check :: exit nope\n', 'ambiguous'],
+      ['malformed-only-duplicate', 'npm run check :: exit nope\nnpm run check :: exit invalid\n', 'ambiguous'],
       ['duplicate', 'npm run check :: exit 0\nnpm run check :: exit 0\n', 'ambiguous']
     ] as const;
     for (const [name, contents, expected] of cases) {
