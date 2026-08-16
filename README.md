@@ -35,7 +35,9 @@ npm run check :: exit 0
 
 The command must begin the line and the decimal exit code must end it. Exit
 zero passes. Nonzero, missing, malformed, mentioned in other text, or duplicate
-outcomes fail closed with the outcome in the diagnostic.
+outcomes fail closed with the outcome in the diagnostic. A single matching
+record with an invalid exit code is `malformed`; any mixture of two or more
+matching records is `ambiguous`, even when only one record has a valid exit code.
 
 ### Evidence JSON contract
 
