@@ -4,7 +4,7 @@ export interface EvidenceReport { repo: string; packageName: string; version: st
 const REQUIRED_SCRIPTS = ['check','test','smoke'];
 const REQUIRED_COMMANDS = ['npm run check','npm test','npm run smoke','npm pack --dry-run'];
 const REQUIRED_PATHS = ['SKILL.md','docs/PRD.md','docs/TASKS.md','fixtures'];
-type CommandOutcome = 'passed' | 'failed' | 'ambiguous' | 'not observed';
+type CommandOutcome = 'passed' | 'failed' | 'malformed' | 'ambiguous' | 'not observed';
 const REPORT_STRING_FIELDS = ['repo','packageName','version'] as const;
 const REPORT_ARRAY_FIELDS = ['scripts','files','warnings','missing'] as const;
 function readJson(file: string): any { return JSON.parse(fs.readFileSync(file,'utf8')); }
@@ -14,15 +14,13 @@ function isIncludedInPackage(files: string[], requiredPath: string): boolean {
 }
 function commandOutcome(logText: string, command: string): CommandOutcome {
   const prefix = `${command} :: exit `;
-  const exitCodes = logText.split(/\r?\n/)
+  const records = logText.split(/\r?\n/)
     .filter((line) => line.startsWith(prefix))
-    .map((line) => line.slice(prefix.length))
-    .filter((value) => /^\d+$/.test(value))
-    .map(Number);
-  if (exitCodes.length === 0) return 'not observed';
-  if (exitCodes.some((code) => code !== 0)) return 'failed';
-  if (exitCodes.length > 1) return 'ambiguous';
-  return 'passed';
+    .map((line) => line.slice(prefix.length));
+  if (records.length === 0) return 'not observed';
+  if (records.length > 1) return 'ambiguous';
+  if (!/^\d+$/.test(records[0])) return 'malformed';
+  return Number(records[0]) === 0 ? 'passed' : 'failed';
 }
 export function collectEvidence(input: EvidenceInput): EvidenceReport {
   const pkgPath = path.join(input.repo,'package.json');
