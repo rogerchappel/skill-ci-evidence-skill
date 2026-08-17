@@ -23,6 +23,34 @@ test('does not treat package file declarations as evidence that required paths e
     fs.rmSync(directory, {recursive:true, force:true});
   }
 });
+test('requires documents to be regular files and fixtures to be a directory', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'skill-ci-evidence-types-'));
+  try {
+    fs.cpSync('fixtures/passing-skill', directory, {recursive:true});
+    for (const entry of ['SKILL.md', 'docs/PRD.md', 'docs/TASKS.md']) {
+      fs.rmSync(path.join(directory, entry));
+      fs.mkdirSync(path.join(directory, entry));
+    }
+    fs.rmSync(path.join(directory, 'fixtures'), {recursive:true});
+    fs.writeFileSync(path.join(directory, 'fixtures'), 'not a directory');
+    const report = collectEvidence({repo:directory, log:'fixtures/release-check.log'});
+    assert.deepEqual(report.missing, []);
+    assert.deepEqual(report.invalid, [
+      'SKILL.md (expected regular file)',
+      'docs/PRD.md (expected regular file)',
+      'docs/TASKS.md (expected regular file)',
+      'fixtures (expected directory)'
+    ]);
+    assert.deepEqual(checkEvidence(report).filter((failure) => failure.includes('required path invalid')), [
+      'required path invalid: SKILL.md (expected regular file)',
+      'required path invalid: docs/PRD.md (expected regular file)',
+      'required path invalid: docs/TASKS.md (expected regular file)',
+      'required path invalid: fixtures (expected directory)'
+    ]);
+  } finally {
+    fs.rmSync(directory, {recursive:true, force:true});
+  }
+});
 test('reports package inclusion intent separately from path existence', () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'skill-ci-evidence-package-'));
   try {
@@ -107,7 +135,7 @@ test('validates a collected evidence report round trip', () => {
 });
 test('rejects omitted evidence metadata, arrays, and maps deterministically', () => {
   const valid = collectEvidence({repo:'fixtures/passing-skill', log:'fixtures/release-check.log'});
-  for (const field of ['repo', 'packageName', 'version', 'scripts', 'files', 'checks', 'warnings', 'missing'] as const) {
+  for (const field of ['repo', 'packageName', 'version', 'scripts', 'files', 'checks', 'warnings', 'missing', 'invalid'] as const) {
     const candidate: Record<string, unknown> = {...valid};
     delete candidate[field];
     assert.throws(
@@ -125,7 +153,8 @@ test('rejects wrong evidence field and collection value types', () => {
     [{...valid, checks: []}, 'checks must be an object with string values'],
     [{...valid, checks: {'npm run check': 0}}, 'checks must be an object with string values'],
     [{...valid, warnings: [null]}, 'warnings must be an array of strings'],
-    [{...valid, missing: {}}, 'missing must be an array of strings']
+    [{...valid, missing: {}}, 'missing must be an array of strings'],
+    [{...valid, invalid: [1]}, 'invalid must be an array of strings']
   ];
   for (const [candidate, diagnostic] of cases) {
     assert.throws(() => validateEvidenceReport(candidate), new Error(`invalid evidence report: ${diagnostic}`));

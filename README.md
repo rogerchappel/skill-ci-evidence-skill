@@ -22,7 +22,9 @@ unknown options, duplicate options, and positional arguments are rejected.
 release commands: `npm run check`, `npm test`, `npm run smoke`, and
 `npm pack --dry-run`.
 
-Required paths are checked on disk. Listing a missing path in `package.json`
+Required documents are accepted only as regular files, and `fixtures` only as a
+directory. Missing and wrong-type paths are reported separately and fail the
+evidence check. Listing a missing or invalid path in `package.json`
 `files` does not satisfy that check; package inclusion is reported separately
 as a warning, with parent directory entries such as `docs` covering their
 contents.
