@@ -26,7 +26,8 @@ const report = {
     'npm pack --dry-run': 'passed'
   },
   warnings: [],
-  missing: []
+  missing: [],
+  invalid: []
 };
 
 if (validateEvidenceReport(report) !== report) {

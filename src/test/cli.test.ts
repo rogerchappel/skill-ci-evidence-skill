@@ -56,6 +56,24 @@ test('collect preserves defaults and supports all output options', () => {
   }
 });
 
+test('collect and check report wrong required path types', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'skill-ci-cli-types-'));
+  try {
+    fs.cpSync('fixtures/passing-skill', directory, {recursive:true});
+    fs.rmSync(path.join(directory, 'SKILL.md'));
+    fs.mkdirSync(path.join(directory, 'SKILL.md'));
+    const evidence = path.join(directory, 'evidence.json');
+    const markdown = path.join(directory, 'evidence.md');
+    execFileSync(process.execPath, [cli, 'collect', '--repo', directory, '--log', 'fixtures/release-check.log', '--out', markdown, '--json', evidence]);
+    assert.match(fs.readFileSync(markdown, 'utf8'), /SKILL\.md \(expected regular file\)/);
+    const checked = run('check', evidence);
+    assert.equal(checked.status, 1);
+    assert.match(checked.stderr, /required path invalid: SKILL\.md \(expected regular file\)/);
+  } finally {
+    fs.rmSync(directory, {recursive:true, force:true});
+  }
+});
+
 test('help documents accepted syntax', () => {
   const result = run('--help');
   assert.equal(result.status, 0);
