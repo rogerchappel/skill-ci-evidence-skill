@@ -68,11 +68,15 @@ grep -F 'required path missing: docs/PRD.md' declared-only.err
 grep -F 'required path missing: docs/TASKS.md' declared-only.err
 grep -F 'required path missing: fixtures' declared-only.err
 
-for case_name in failed mention incomplete; do
+for case_name in failed mention incomplete malformed valid-malformed malformed-only-duplicate duplicate; do
   case "$case_name" in
     failed) printf '%s\n' 'npm run check :: exit 2' > "$case_name.log" ;;
     mention) printf '%s\n' 'expected: npm run check :: exit 0' > "$case_name.log" ;;
     incomplete) printf '%s\n' 'npm run check PASS' > "$case_name.log" ;;
+    malformed) printf '%s\n' 'npm run check :: exit nope' > "$case_name.log" ;;
+    valid-malformed) printf '%s\n' 'npm run check :: exit 0' 'npm run check :: exit nope' > "$case_name.log" ;;
+    malformed-only-duplicate) printf '%s\n' 'npm run check :: exit nope' 'npm run check :: exit invalid' > "$case_name.log" ;;
+    duplicate) printf '%s\n' 'npm run check :: exit 0' 'npm run check :: exit 0' > "$case_name.log" ;;
   esac
   npx --no-install skill-ci-evidence collect \
     --repo node_modules/skill-ci-evidence-skill/fixtures/passing-skill \
