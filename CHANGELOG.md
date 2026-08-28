@@ -12,3 +12,4 @@
 
 - Initial public release candidate.
 - Local-first CLI, library, fixtures, tests, and skill documentation.
+- Publish only the CLI and library build output; compile tests into a temporary test directory and verify the packed runtime allowlist.
