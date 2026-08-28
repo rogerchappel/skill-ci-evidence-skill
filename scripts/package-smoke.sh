@@ -5,6 +5,20 @@ package_dir="$(mktemp -d)"
 trap 'rm -rf "$package_dir"' EXIT
 
 package_file="$(npm pack --pack-destination "$package_dir" | tail -n 1)"
+tar -tzf "$package_dir/$package_file" | sed 's#^package/##' | sort > "$package_dir/manifest.txt"
+for runtime_file in dist/index.js dist/index.d.ts dist/cli.js dist/cli.d.ts; do
+  grep -Fx "$runtime_file" "$package_dir/manifest.txt" >/dev/null
+done
+if grep -E '^dist/test/' "$package_dir/manifest.txt"; then
+  echo "compiled tests must not be published" >&2
+  exit 1
+fi
+unexpected_dist="$(grep '^dist/' "$package_dir/manifest.txt" | grep -Ev '^dist/(index|cli)\.(js|d\.ts)$' || true)"
+if [[ -n "$unexpected_dist" ]]; then
+  echo "unexpected compiled artifacts in package:" >&2
+  echo "$unexpected_dist" >&2
+  exit 1
+fi
 consumer_dir="$package_dir/consumer"
 mkdir "$consumer_dir"
 cd "$consumer_dir"
