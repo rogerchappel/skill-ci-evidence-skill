@@ -6,8 +6,9 @@ const REQUIRED_COMMANDS = ['npm run check','npm test','npm run smoke','npm pack 
 const REQUIRED_PATHS = ['SKILL.md','docs/PRD.md','docs/TASKS.md','fixtures'];
 const REQUIRED_FILES = REQUIRED_PATHS.slice(0, 3);
 type CommandOutcome = 'passed' | 'failed' | 'malformed' | 'ambiguous' | 'not observed';
-const REPORT_STRING_FIELDS = ['repo','packageName','version'] as const;
-const REPORT_ARRAY_FIELDS = ['scripts','files','warnings','missing','invalid'] as const;
+export const REPORT_STRING_FIELDS = ['repo','packageName','version'] as const;
+export const REPORT_ARRAY_FIELDS = ['scripts','files','warnings','missing','invalid'] as const;
+export const EVIDENCE_REPORT_FIELDS = [...REPORT_STRING_FIELDS, ...REPORT_ARRAY_FIELDS, 'checks'] as const;
 function readJson(file: string): any { return JSON.parse(fs.readFileSync(file,'utf8')); }
 function exists(file: string): boolean { return fs.existsSync(file); }
 function requiredPathProblem(repo: string, entry: string): string | undefined {
@@ -55,7 +56,7 @@ function invalidReport(message: string): never {
 export function validateEvidenceReport(value: unknown): EvidenceReport {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) invalidReport('expected a JSON object');
   const report = value as Record<string, unknown>;
-  for (const field of [...REPORT_STRING_FIELDS, ...REPORT_ARRAY_FIELDS, 'checks'] as const) {
+  for (const field of EVIDENCE_REPORT_FIELDS) {
     if (!Object.prototype.hasOwnProperty.call(report, field)) invalidReport(`${field} is required`);
   }
   for (const field of REPORT_STRING_FIELDS) {

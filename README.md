@@ -48,8 +48,30 @@ matching records is `ambiguous`, even when only one record has a valid exit code
 | Field | Type |
 | --- | --- |
 | `repo`, `packageName`, `version` | string |
-| `scripts`, `files`, `warnings`, `missing` | array of strings |
+| `scripts`, `files`, `warnings`, `missing`, `invalid` | array of strings |
 | `checks` | object with string values |
+
+A minimal hand-authored report with successful required command outcomes looks
+like this:
+
+```json
+{
+  "repo": ".",
+  "packageName": "example-skill",
+  "version": "1.0.0",
+  "scripts": ["check", "test", "smoke"],
+  "files": [],
+  "warnings": [],
+  "missing": [],
+  "invalid": [],
+  "checks": {
+    "npm run check": "passed",
+    "npm test": "passed",
+    "npm run smoke": "passed",
+    "npm pack --dry-run": "passed"
+  }
+}
+```
 
 `checks` must contain keys for `npm run check`, `npm test`, `npm run smoke`,
 and `npm pack --dry-run`. Additional check keys are preserved. Missing fields,

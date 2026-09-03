@@ -1,5 +1,5 @@
 import test from 'node:test'; import assert from 'node:assert/strict'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path'; import { spawnSync } from 'node:child_process';
-import { collectEvidence, checkEvidence, validateEvidenceReport } from '../index.js';
+import { collectEvidence, checkEvidence, EVIDENCE_REPORT_FIELDS, validateEvidenceReport } from '../index.js';
 test('collects passing repo evidence', () => { const report = collectEvidence({repo:'fixtures/passing-skill', log:'fixtures/release-check.log'}); assert.equal(report.packageName, 'passing-skill'); assert.equal(report.missing.length, 0); assert.equal(report.warnings.length, 0); assert.equal(checkEvidence(report).length, 0); });
 test('flags incomplete package evidence', () => { const report = collectEvidence({repo:'fixtures/failing-skill'}); assert.ok(report.missing.includes('SKILL.md')); assert.ok(checkEvidence(report).length > 0); });
 test('does not treat package file declarations as evidence that required paths exist', () => {
@@ -132,6 +132,16 @@ test('check command exits nonzero for incomplete evidence and zero for passing e
 test('validates a collected evidence report round trip', () => {
   const collected = collectEvidence({repo:'fixtures/passing-skill', log:'fixtures/release-check.log'});
   assert.deepEqual(validateEvidenceReport(JSON.parse(JSON.stringify(collected))), collected);
+});
+test('documents every required evidence field and a valid hand-authored report', () => {
+  const readme = fs.readFileSync('README.md', 'utf8');
+  const contract = readme.match(/### Evidence JSON contract([\s\S]*?)## Library/)?.[1] ?? '';
+  for (const field of EVIDENCE_REPORT_FIELDS) {
+    assert.match(contract, new RegExp('`' + field + '`'), `README contract must document ${field}`);
+  }
+  const json = contract.match(/```json\n([\s\S]*?)\n```/)?.[1];
+  assert.ok(json, 'README contract must include a JSON example');
+  assert.deepEqual(checkEvidence(JSON.parse(json)), []);
 });
 test('rejects omitted evidence metadata, arrays, and maps deterministically', () => {
   const valid = collectEvidence({repo:'fixtures/passing-skill', log:'fixtures/release-check.log'});
