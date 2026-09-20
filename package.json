@@ -30,7 +30,8 @@
     "check": "tsc --noEmit -p tsconfig.json",
     "test": "npm run build && rm -rf .tmp/test-dist && tsc -p tsconfig.test.json && node --test .tmp/test-dist/test/*.test.js",
     "smoke": "npm run build && bash scripts/smoke.sh",
-    "package:smoke": "npm run build && bash scripts/package-smoke.sh"
+    "package:smoke": "npm run build && bash scripts/package-smoke.sh",
+    "release:check": "npm run check && npm run test && npm run build && npm run smoke && npm run package:smoke"
   },
   "keywords": [
     "agent-skill",
